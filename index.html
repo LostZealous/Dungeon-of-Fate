@@ -40,7 +40,7 @@
       cursor: pointer;
       margin: 5px;
     }
-    .action-btn:disabled, .shop-btn:disabled, .town-btn:disabled, .level-btn:disabled,
+    .action-btn:disabled, .shop-btn:disabled, .town-btn:disabled, .level-btn:disabled, 
     .create-btn:disabled, .restart-btn:disabled, .save-btn:disabled, .load-btn:disabled {
       background-color: #888;
       cursor: not-allowed;
@@ -86,7 +86,7 @@
       font-size: 1.1em;
       margin: 5px;
     }
-    /* Save/Load container - always visible during gameplay */
+    /* Save/Load container (always visible during gameplay) */
     #save-load-container {
       text-align: center;
       margin-bottom: 10px;
@@ -138,7 +138,7 @@
       </div>
       <!-- Shop container -->
       <div id="shop-container"></div>
-      <!-- Town action container: Shop or Delve -->
+      <!-- Town action container -->
       <div id="town-action-container">
         <button id="shop-town-btn" class="town-btn">Shop</button>
         <button id="delve-btn" class="town-btn">Delve into Dungeon</button>
@@ -185,8 +185,28 @@
     function clearLog() {
       document.getElementById('log').innerHTML = "";
     }
-    function getRandom(min, max) {
-      return Math.floor(Math.random() * (max - min + 1)) + min;
+
+    // Convert a string to an ArrayBuffer
+    function stringToArrayBuffer(str) {
+      const encoder = new TextEncoder();
+      return encoder.encode(str);
+    }
+
+    // Convert an ArrayBuffer to a hexadecimal string
+    function arrayBufferToHex(buffer) {
+      const byteArray = new Uint8Array(buffer);
+      const hexCodes = [...byteArray].map(value => {
+        const hexCode = value.toString(16);
+        return hexCode.padStart(2, '0');
+      });
+      return hexCodes.join('');
+    }
+
+    // Compute SHA-256 hash of a string and return a hex string
+    async function computeHash(str) {
+      const buffer = stringToArrayBuffer(str);
+      const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
+      return arrayBufferToHex(hashBuffer);
     }
 
     // Base Character class
@@ -216,7 +236,7 @@
       }
     }
 
-    // Player class with class-specific starting stats and level-up
+    // Player class with class-specific stats and level-up
     class Player extends Character {
       constructor(name, playerClass) {
         let baseStr, baseDex, baseCon;
@@ -285,6 +305,10 @@
         super(name, str, dex, con);
         this.level = level;
       }
+    }
+
+    function getRandom(min, max) {
+      return Math.floor(Math.random() * (max - min + 1)) + min;
     }
 
     // Promise wrappers for user actions
@@ -364,6 +388,94 @@
       });
     }
 
+    // Save game: serialize game state to JSON and compute a SHA-256 hash.
+    async function saveGame() {
+      if (!currentPlayer) {
+        alert("No game is currently running!");
+        return;
+      }
+      const gameState = {
+        player: {
+          name: currentPlayer.name,
+          playerClass: currentPlayer.playerClass,
+          level: currentPlayer.level,
+          str: currentPlayer.str,
+          dex: currentPlayer.dex,
+          con: currentPlayer.con,
+          hp: currentPlayer.hp,
+          maxHp: currentPlayer.maxHp,
+          gold: currentPlayer.gold,
+          inventory: currentPlayer.inventory,
+          equippedWeapon: currentPlayer.equippedWeapon,
+          equippedArmor: currentPlayer.equippedArmor
+        },
+        dungeonLevel: currentDungeonLevel
+      };
+      const serializedData = JSON.stringify(gameState);
+      const hash = await computeHash(serializedData);
+      const finalSave = JSON.stringify({ data: serializedData, hash: hash });
+      prompt("Copy your save string:", finalSave);
+    }
+
+    // Load game: validate hash and restore game state.
+    async function loadGame() {
+      const input = prompt("Paste your save string:");
+      if (!input) return;
+      try {
+        const saveObject = JSON.parse(input);
+        const computedHash = await computeHash(saveObject.data);
+        if (computedHash !== saveObject.hash) {
+          alert("Save data integrity check failed! The save data may have been tampered with.");
+          return;
+        }
+        const gameState = JSON.parse(saveObject.data);
+        gameRunning = false;
+        currentPlayer = new Player(gameState.player.name, gameState.player.playerClass);
+        currentPlayer.level = gameState.player.level;
+        currentPlayer.str = gameState.player.str;
+        currentPlayer.dex = gameState.player.dex;
+        currentPlayer.con = gameState.player.con;
+        currentPlayer.hp = gameState.player.hp;
+        currentPlayer.maxHp = gameState.player.maxHp;
+        currentPlayer.gold = gameState.player.gold;
+        currentPlayer.inventory = gameState.player.inventory;
+        currentPlayer.equippedWeapon = gameState.player.equippedWeapon;
+        currentPlayer.equippedArmor = gameState.player.equippedArmor;
+        currentDungeonLevel = gameState.dungeonLevel;
+        alert("Game loaded successfully!");
+        clearLog();
+        document.getElementById("restart-section").style.display = "none";
+        document.getElementById("character-creation").style.display = "none";
+        document.getElementById("gameplay-section").style.display = "block";
+        startGameLoop();
+      } catch (e) {
+        alert("Failed to load game. Check your save string.");
+      }
+    }
+
+    // Convert string to ArrayBuffer
+    function stringToArrayBuffer(str) {
+      const encoder = new TextEncoder();
+      return encoder.encode(str);
+    }
+
+    // Convert ArrayBuffer to hex string
+    function arrayBufferToHex(buffer) {
+      const byteArray = new Uint8Array(buffer);
+      const hexCodes = [...byteArray].map(value => {
+        const hexCode = value.toString(16);
+        return hexCode.padStart(2, '0');
+      });
+      return hexCodes.join('');
+    }
+
+    // Compute SHA-256 hash of a string (returns hex string)
+    async function computeHash(str) {
+      const buffer = stringToArrayBuffer(str);
+      const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
+      return arrayBufferToHex(hashBuffer);
+    }
+
     // Shop functionality
     async function shop(player, dungeonLevel) {
       log("\n--- Welcome to the Shop ---");
@@ -423,7 +535,7 @@
       await delay(1000);
     }
 
-    // Town function
+    // Town function with persistent town actions
     async function town(player, dungeonLevel) {
       log("\n--- You enter town ---");
       await delay(1000);
@@ -432,17 +544,22 @@
       player.hp = player.maxHp;
       log(`\n${player.name}'s HP is fully restored to ${player.hp}!\n`);
       await delay(500);
-      let townChoice = await getTownAction();
-      if (townChoice === "shop") {
-        await shop(player, dungeonLevel);
-      } else if (townChoice === "delve") {
-        log("You decide not to linger in town and head back to the dungeon.");
+      
+      let inTown = true;
+      while (inTown) {
+        let townChoice = await getTownAction();
+        if (townChoice === "shop") {
+          await shop(player, dungeonLevel);
+        } else if (townChoice === "delve") {
+          inTown = false;
+          log("You decide to leave town and head back to the dungeon.");
+        }
       }
       await delay(500);
       log("--- You leave town and return to the dungeon ---");
     }
 
-    // Combat function with crits
+    // Combat function
     async function combat(player, monster) {
       log(`\nA wild ${monster.name} (Level ${monster.level}) appears!`);
       while (player.hp > 0 && monster.hp > 0) {
@@ -543,11 +660,7 @@
       return rooms;
     }
 
-    // Global game state and main game loop
-    let gameRunning = false;
-    let currentPlayer = null;
-    let currentDungeonLevel = 1;
-
+    // Main game loop
     async function gameLoop() {
       gameRunning = true;
       while (currentPlayer.hp > 0 && gameRunning) {
@@ -597,8 +710,8 @@
       document.getElementById("gameplay-section").style.display = "none";
     }
 
-    // Save game: Serialize game state to JSON.
-    function saveGame() {
+    // Event listeners for Save and Load buttons
+    document.getElementById("save-btn").addEventListener("click", async () => {
       if (!currentPlayer) {
         alert("No game is currently running!");
         return;
@@ -620,16 +733,23 @@
         },
         dungeonLevel: currentDungeonLevel
       };
-      const serialized = JSON.stringify(gameState);
-      prompt("Copy your save string:", serialized);
-    }
+      const serializedData = JSON.stringify(gameState);
+      const hash = await computeHash(serializedData);
+      const finalSave = JSON.stringify({ data: serializedData, hash: hash });
+      prompt("Copy your save string:", finalSave);
+    });
 
-    // Load game: Deserialize game state from JSON.
-    function loadGame() {
+    document.getElementById("load-btn").addEventListener("click", async () => {
       const input = prompt("Paste your save string:");
       if (!input) return;
       try {
-        const gameState = JSON.parse(input);
+        const saveObject = JSON.parse(input);
+        const computedHash = await computeHash(saveObject.data);
+        if (computedHash !== saveObject.hash) {
+          alert("Save data integrity check failed! The save data may have been tampered with.");
+          return;
+        }
+        const gameState = JSON.parse(saveObject.data);
         gameRunning = false;
         currentPlayer = new Player(gameState.player.name, gameState.player.playerClass);
         currentPlayer.level = gameState.player.level;
@@ -652,12 +772,9 @@
       } catch (e) {
         alert("Failed to load game. Check your save string.");
       }
-    }
+    });
 
-    // Event listeners
-    document.getElementById("save-btn").addEventListener("click", saveGame);
-    document.getElementById("load-btn").addEventListener("click", loadGame);
-
+    // Start Adventure button event
     document.getElementById("start-adventure-btn").addEventListener("click", () => {
       clearLog();
       document.getElementById("character-creation").style.display = "none";
@@ -673,10 +790,14 @@
       }
       currentPlayer = new Player(playerName, chosenClass);
       currentDungeonLevel = 1;
+      console.log("Starting game for", currentPlayer.name, "as a", chosenClass);
       startGameLoop();
     });
 
-    document.getElementById("restart-btn").addEventListener("click", restartGame);
+    // Restart Game button event
+    document.getElementById("restart-btn").addEventListener("click", () => {
+      restartGame();
+    });
   </script>
 </body>
 </html>
