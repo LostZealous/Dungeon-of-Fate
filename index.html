@@ -20,6 +20,7 @@
       text-align: center;
       color: #ffcc00;
     }
+    /* The log area */
     #log {
       background-color: #333;
       padding: 15px;
@@ -29,7 +30,8 @@
       white-space: pre-wrap;
       margin-bottom: 20px;
     }
-    .action-btn, .shop-btn, .town-btn, .level-btn, .create-btn {
+    /* Buttons styling */
+    .action-btn, .shop-btn, .town-btn, .level-btn, .create-btn, .restart-btn, .save-btn, .load-btn {
       background-color: #ffcc00;
       border: none;
       padding: 10px 20px;
@@ -38,7 +40,7 @@
       cursor: pointer;
       margin: 5px;
     }
-    .action-btn:disabled, .shop-btn:disabled, .town-btn:disabled, .level-btn:disabled, .create-btn:disabled {
+    .action-btn:disabled, .shop-btn:disabled, .town-btn:disabled, .level-btn:disabled, .create-btn:disabled, .restart-btn:disabled, .save-btn:disabled, .load-btn:disabled {
       background-color: #888;
       cursor: not-allowed;
     }
@@ -48,16 +50,19 @@
     #shop-container, 
     #town-action-container,
     #level-up-container,
-    #gameplay-section {
+    #gameplay-section,
+    #restart-section,
+    #save-load-container {
       text-align: center;
       margin-bottom: 20px;
       display: none;
     }
+    /* Character creation section */
     #character-creation {
       text-align: center;
       margin-bottom: 20px;
     }
-    #start-btn, #start-adventure-btn {
+    #start-adventure-btn, #restart-btn {
       background-color: #ffcc00;
       border: none;
       padding: 10px 20px;
@@ -83,6 +88,12 @@
     }
     .stat-sheet {
       font-size: 0.9em;
+      margin-bottom: 10px;
+    }
+    /* Save/Load container is always visible in gameplay */
+    #save-load-container {
+      display: block;
+      text-align: center;
       margin-bottom: 10px;
     }
   </style>
@@ -113,6 +124,11 @@
     
     <!-- Gameplay Section -->
     <div id="gameplay-section">
+      <!-- Save/Load Buttons -->
+      <div id="save-load-container">
+        <button id="save-btn" class="save-btn">Save Game</button>
+        <button id="load-btn" class="load-btn">Load Game</button>
+      </div>
       <div id="log"></div>
       <!-- Combat action buttons -->
       <div id="action-container">
@@ -139,9 +155,19 @@
         <button id="level-up-con" class="level-btn">Increase CON</button>
       </div>
     </div>
+    
+    <!-- Restart Section -->
+    <div id="restart-section">
+      <button id="restart-btn" class="restart-btn">Restart Game</button>
+    </div>
   </div>
 
   <script>
+    // Global variables for the current game state
+    let currentPlayer = null;
+    let currentDungeonLevel = 1;
+    let gameRunning = false; // flag to control game loop
+
     // Utility functions
     function delay(ms) {
       return new Promise(resolve => setTimeout(resolve, ms));
@@ -191,10 +217,9 @@
       }
     }
 
-    // Player class with class-specific starting stats
+    // Player class with class-specific stats
     class Player extends Character {
       constructor(name, playerClass) {
-        // Set base stats based on chosen class.
         let baseStr, baseDex, baseCon;
         switch(playerClass) {
           case "warrior":
@@ -210,6 +235,7 @@
             baseStr = 14; baseDex = 12; baseCon = 14;
         }
         super(name, baseStr, baseDex, baseCon);
+        this.playerClass = playerClass;
         this.level = 1;
         this.gold = 50;
         this.inventory = [];
@@ -249,7 +275,7 @@
       }
     }
 
-    // Monster class that scales with dungeon level.
+    // Monster class
     class Monster extends Character {
       constructor(level) {
         const names = ["Goblin", "Skeleton", "Orc", "Slime"];
@@ -343,7 +369,67 @@
       });
     }
 
-    // Shop functionality: Items scale based on dungeon level.
+    // Save Game: Serialize the current game state to a string.
+    function saveGame() {
+      if (!currentPlayer) {
+        alert("No game is currently running!");
+        return;
+      }
+      const gameState = {
+        player: {
+          name: currentPlayer.name,
+          playerClass: currentPlayer.playerClass,
+          level: currentPlayer.level,
+          str: currentPlayer.str,
+          dex: currentPlayer.dex,
+          con: currentPlayer.con,
+          hp: currentPlayer.hp,
+          maxHp: currentPlayer.maxHp,
+          gold: currentPlayer.gold,
+          inventory: currentPlayer.inventory,
+          equippedWeapon: currentPlayer.equippedWeapon,
+          equippedArmor: currentPlayer.equippedArmor
+        },
+        dungeonLevel: currentDungeonLevel
+      };
+      const serialized = JSON.stringify(gameState);
+      prompt("Copy your save string:", serialized);
+    }
+
+    // Load Game: Ask the user for a save string and load the game state.
+    function loadGame() {
+      const input = prompt("Paste your save string:");
+      if (!input) return;
+      try {
+        const gameState = JSON.parse(input);
+        // Recreate the player using the saved data.
+        currentPlayer = new Player(gameState.player.name, gameState.player.playerClass);
+        currentPlayer.level = gameState.player.level;
+        currentPlayer.str = gameState.player.str;
+        currentPlayer.dex = gameState.player.dex;
+        currentPlayer.con = gameState.player.con;
+        currentPlayer.hp = gameState.player.hp;
+        currentPlayer.maxHp = gameState.player.maxHp;
+        currentPlayer.gold = gameState.player.gold;
+        currentPlayer.inventory = gameState.player.inventory;
+        currentPlayer.equippedWeapon = gameState.player.equippedWeapon;
+        currentPlayer.equippedArmor = gameState.player.equippedArmor;
+        currentDungeonLevel = gameState.dungeonLevel;
+        alert("Game loaded successfully!");
+        // Restart the game loop with the loaded state.
+        gameRunning = false;
+        // Hide restart and character creation sections.
+        document.getElementById("restart-section").style.display = "none";
+        document.getElementById("character-creation").style.display = "none";
+        document.getElementById("gameplay-section").style.display = "block";
+        clearLog();
+        startGameLoop();
+      } catch (e) {
+        alert("Failed to load game. Check your save string.");
+      }
+    }
+
+    // Shop functionality
     async function shop(player, dungeonLevel) {
       log("\n--- Welcome to the Shop ---");
       await delay(500);
@@ -393,7 +479,7 @@
       await delay(1000);
     }
 
-    // Chest room event: Gain gold from a treasure chest.
+    // Chest room event
     async function chestRoom(player, dungeonLevel) {
       const goldReward = getRandom(10, 30) * dungeonLevel;
       log(`\nYou discover a treasure chest! You open it and find ${goldReward} gold.`);
@@ -402,7 +488,7 @@
       await delay(1000);
     }
 
-    // Town: Automatically heals the player and then offers shop/delve options.
+    // Town function
     async function town(player, dungeonLevel) {
       log("\n--- You enter town ---");
       await delay(1000);
@@ -421,7 +507,7 @@
       log("--- You leave town and return to the dungeon ---");
     }
 
-    // Combat function using d20 rolls with crits.
+    // Combat function
     async function combat(player, monster) {
       log(`\nA wild ${monster.name} (Level ${monster.level}) appears!`);
       while (player.hp > 0 && monster.hp > 0) {
@@ -505,7 +591,7 @@
       }
     }
 
-    // Generate a dungeon level with a mix of monster and chest rooms.
+    // Generate a dungeon level
     function generateDungeon(level) {
       const minRooms = 3 + level;
       const maxRooms = 6 + level;
@@ -522,8 +608,132 @@
       return rooms;
     }
 
-    // Main game loop.
+    // Global variables for game state
+    let gameRunning = false;
+    let currentPlayer = null;
+    let currentDungeonLevel = 1;
+
+    // Main game loop; uses global currentPlayer and currentDungeonLevel.
     async function gameLoop() {
+      gameRunning = true;
+      while (currentPlayer.hp > 0 && gameRunning) {
+        log(`\n========== Dungeon Level ${currentDungeonLevel} ==========\n`);
+        const rooms = generateDungeon(currentDungeonLevel);
+        for (let room of rooms) {
+          if (currentPlayer.hp <= 0 || !gameRunning) break;
+          if (room.type === "monster") {
+            await combat(currentPlayer, room.monster);
+          } else if (room.type === "chest") {
+            await chestRoom(currentPlayer, currentDungeonLevel);
+          }
+          if (currentPlayer.hp > 0) {
+            await delay(1000);
+          }
+        }
+        if (currentPlayer.hp > 0 && gameRunning) {
+          log(`\n${currentPlayer.name} completed Dungeon Level ${currentDungeonLevel}!`);
+          await currentPlayer.levelUp();
+          let decision = await getAfterBattleAction();
+          if (decision === "town") {
+            await town(currentPlayer, currentDungeonLevel);
+          } else {
+            const healAmount = 5;
+            currentPlayer.hp = Math.min(currentPlayer.hp + healAmount, currentPlayer.maxHp);
+            log(`${currentPlayer.name} rests briefly and recovers ${healAmount} HP. Current HP: ${currentPlayer.hp}`);
+          }
+          currentDungeonLevel++;
+          await delay(1500);
+        }
+      }
+      if (currentPlayer.hp <= 0) {
+        log("\nGame Over! Thanks for playing.");
+      }
+      // Show restart button when game loop ends.
+      document.getElementById("restart-section").style.display = "block";
+    }
+
+    // Start the game loop
+    function startGameLoop() {
+      clearLog();
+      gameLoop();
+    }
+
+    // Restart the game (shows character creation again)
+    function restartGame() {
+      clearLog();
+      document.getElementById("restart-section").style.display = "none";
+      document.getElementById("character-creation").style.display = "block";
+      document.getElementById("gameplay-section").style.display = "none";
+    }
+
+    // Event listeners for Save and Load buttons.
+    document.getElementById("save-btn").addEventListener("click", () => {
+      // Save game state as JSON string.
+      if (!currentPlayer) {
+        alert("No game is currently running!");
+        return;
+      }
+      const gameState = {
+        player: {
+          name: currentPlayer.name,
+          playerClass: currentPlayer.playerClass,
+          level: currentPlayer.level,
+          str: currentPlayer.str,
+          dex: currentPlayer.dex,
+          con: currentPlayer.con,
+          hp: currentPlayer.hp,
+          maxHp: currentPlayer.maxHp,
+          gold: currentPlayer.gold,
+          inventory: currentPlayer.inventory,
+          equippedWeapon: currentPlayer.equippedWeapon,
+          equippedArmor: currentPlayer.equippedArmor
+        },
+        dungeonLevel: currentDungeonLevel
+      };
+      const serialized = JSON.stringify(gameState);
+      prompt("Copy your save string:", serialized);
+    });
+
+    document.getElementById("load-btn").addEventListener("click", () => {
+      const input = prompt("Paste your save string:");
+      if (!input) return;
+      try {
+        const gameState = JSON.parse(input);
+        // Stop current game loop.
+        gameRunning = false;
+        // Recreate player from saved state.
+        currentPlayer = new Player(gameState.player.name, gameState.player.playerClass);
+        currentPlayer.level = gameState.player.level;
+        currentPlayer.str = gameState.player.str;
+        currentPlayer.dex = gameState.player.dex;
+        currentPlayer.con = gameState.player.con;
+        currentPlayer.hp = gameState.player.hp;
+        currentPlayer.maxHp = gameState.player.maxHp;
+        currentPlayer.gold = gameState.player.gold;
+        currentPlayer.inventory = gameState.player.inventory;
+        currentPlayer.equippedWeapon = gameState.player.equippedWeapon;
+        currentPlayer.equippedArmor = gameState.player.equippedArmor;
+        currentDungeonLevel = gameState.dungeonLevel;
+        alert("Game loaded successfully!");
+        clearLog();
+        // Hide restart and character creation sections.
+        document.getElementById("restart-section").style.display = "none";
+        document.getElementById("character-creation").style.display = "none";
+        document.getElementById("gameplay-section").style.display = "block";
+        // Restart game loop with loaded state.
+        startGameLoop();
+      } catch (e) {
+        alert("Failed to load game. Check your save string.");
+      }
+    });
+
+    // Start Adventure button event listener.
+    document.getElementById("start-adventure-btn").addEventListener("click", () => {
+      clearLog();
+      // Hide character creation section and show gameplay section.
+      document.getElementById("character-creation").style.display = "none";
+      document.getElementById("gameplay-section").style.display = "block";
+      // Initialize global game state from character creation.
       let playerName = document.getElementById("player-name").value.trim() || "Hero";
       let classOptions = document.getElementsByName("player-class");
       let chosenClass = "warrior"; // default
@@ -533,51 +743,14 @@
           break;
         }
       }
-      let player = new Player(playerName, chosenClass);
-      log(`Welcome, ${player.name} the ${chosenClass.toUpperCase()}, to the Dungeon of Fate!`);
-      log("Prepare for battle...\n");
-      await delay(1000);
-      let dungeonLevel = 1;
-      while (player.hp > 0) {
-        log(`\n========== Dungeon Level ${dungeonLevel} ==========\n`);
-        const rooms = generateDungeon(dungeonLevel);
-        for (let room of rooms) {
-          if (player.hp <= 0) break;
-          if (room.type === "monster") {
-            await combat(player, room.monster);
-          } else if (room.type === "chest") {
-            await chestRoom(player, dungeonLevel);
-          }
-          if (player.hp > 0) {
-            await delay(1000);
-          }
-        }
-        if (player.hp > 0) {
-          log(`\n${player.name} completed Dungeon Level ${dungeonLevel}!`);
-          await player.levelUp();
-          let decision = await getAfterBattleAction();
-          if (decision === "town") {
-            await town(player, dungeonLevel);
-          } else {
-            const healAmount = 5;
-            player.hp = Math.min(player.hp + healAmount, player.maxHp);
-            log(`${player.name} rests briefly and recovers ${healAmount} HP. Current HP: ${player.hp}`);
-          }
-          dungeonLevel++;
-          await delay(1500);
-        }
-      }
-      log("\nGame Over! Thanks for playing.");
-      document.getElementById("start-adventure-btn").disabled = false;
-    }
+      currentPlayer = new Player(playerName, chosenClass);
+      currentDungeonLevel = 1;
+      startGameLoop();
+    });
 
-    // Start game when the Start Adventure button is clicked.
-    document.getElementById("start-adventure-btn").addEventListener("click", () => {
-      clearLog();
-      // Hide character creation section and show gameplay section.
-      document.getElementById("character-creation").style.display = "none";
-      document.getElementById("gameplay-section").style.display = "block";
-      gameLoop();
+    // Restart Game button event listener.
+    document.getElementById("restart-btn").addEventListener("click", () => {
+      restartGame();
     });
   </script>
 </body>
