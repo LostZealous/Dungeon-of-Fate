@@ -51,6 +51,10 @@
       margin-bottom: 20px;
       display: none;
     }
+    #start-section {
+      text-align: center;
+      margin-bottom: 20px;
+    }
     #start-btn {
       background-color: #ffcc00;
       border: none;
@@ -58,6 +62,13 @@
       font-size: 1em;
       border-radius: 5px;
       cursor: pointer;
+    }
+    #player-name {
+      padding: 5px;
+      font-size: 1em;
+      margin-top: 10px;
+      width: 200px;
+      text-align: center;
     }
     .stat-sheet {
       font-size: 0.9em;
@@ -93,7 +104,10 @@
       <button id="level-up-dex" class="level-btn">Increase DEX</button>
       <button id="level-up-con" class="level-btn">Increase CON</button>
     </div>
-    <div style="text-align: center;">
+    <!-- Start section with name input and start button -->
+    <div id="start-section">
+      <label for="player-name">Enter Your Name:</label><br>
+      <input type="text" id="player-name" placeholder="Hero"><br><br>
       <button id="start-btn">Start Game</button>
     </div>
   </div>
@@ -547,9 +561,11 @@
 
     // Main game loop.
     async function gameLoop() {
-      let player = new Player();
+      // Get the player's name from the input. If blank, default to "Hero".
+      let playerName = document.getElementById("player-name").value.trim() || "Hero";
+      let player = new Player(playerName);
       let dungeonLevel = 1;
-      log("Welcome to the Dungeon RPG!");
+      log(`Welcome, ${player.name}, to the Dungeon of Fate!`);
       log("Prepare for battle...\n");
       await delay(1000);
       while (player.hp > 0) {
@@ -589,6 +605,8 @@
     document.getElementById("start-btn").addEventListener("click", () => {
       clearLog();
       document.getElementById("start-btn").disabled = true;
+      // Hide the start section after starting the game.
+      document.getElementById("start-section").style.display = "none";
       gameLoop();
     });
   </script>
