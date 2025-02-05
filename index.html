@@ -29,7 +29,7 @@
       white-space: pre-wrap;
       margin-bottom: 20px;
     }
-    .action-btn, .shop-btn, .town-btn, .level-btn {
+    .action-btn, .shop-btn, .town-btn, .level-btn, .create-btn {
       background-color: #ffcc00;
       border: none;
       padding: 10px 20px;
@@ -38,24 +38,26 @@
       cursor: pointer;
       margin: 5px;
     }
-    .action-btn:disabled, .shop-btn:disabled, .town-btn:disabled, .level-btn:disabled {
+    .action-btn:disabled, .shop-btn:disabled, .town-btn:disabled, .level-btn:disabled, .create-btn:disabled {
       background-color: #888;
       cursor: not-allowed;
     }
+    /* Hide sections by default */
     #action-container, 
     #after-battle-container, 
     #shop-container, 
     #town-action-container,
-    #level-up-container {
+    #level-up-container,
+    #gameplay-section {
       text-align: center;
       margin-bottom: 20px;
       display: none;
     }
-    #start-section {
+    #character-creation {
       text-align: center;
       margin-bottom: 20px;
     }
-    #start-btn {
+    #start-btn, #start-adventure-btn {
       background-color: #ffcc00;
       border: none;
       padding: 10px 20px;
@@ -63,12 +65,21 @@
       border-radius: 5px;
       cursor: pointer;
     }
+    /* Enhanced styling for input fields */
     #player-name {
-      padding: 5px;
-      font-size: 1em;
-      margin-top: 10px;
-      width: 200px;
+      padding: 10px;
+      font-size: 1.2em;
+      width: 250px;
       text-align: center;
+      border: 2px solid #ffcc00;
+      border-radius: 5px;
+      background-color: #444;
+      color: #fff;
+      margin-bottom: 10px;
+    }
+    .class-option {
+      font-size: 1.1em;
+      margin: 5px;
     }
     .stat-sheet {
       font-size: 0.9em;
@@ -79,36 +90,54 @@
 <body>
   <div id="game-container">
     <h1>Dungeon of Fate</h1>
-    <div id="log"></div>
-    <!-- Combat action buttons -->
-    <div id="action-container">
-      <button id="attack-btn" class="action-btn">Attack</button>
-      <button id="flee-btn" class="action-btn">Flee</button>
-    </div>
-    <!-- After battle/town action buttons -->
-    <div id="after-battle-container">
-      <button id="continue-btn" class="action-btn">Continue Dungeon</button>
-      <button id="town-btn" class="action-btn">Go to Town</button>
-    </div>
-    <!-- Shop container (used when in town) -->
-    <div id="shop-container"></div>
-    <!-- Town action container: Shop or Delve into Dungeon -->
-    <div id="town-action-container">
-      <button id="shop-town-btn" class="town-btn">Shop</button>
-      <button id="delve-btn" class="town-btn">Delve into Dungeon</button>
-    </div>
-    <!-- Level-up container: Choose which stat to increase -->
-    <div id="level-up-container">
-      <p>Level Up! Choose a stat to increase:</p>
-      <button id="level-up-str" class="level-btn">Increase STR</button>
-      <button id="level-up-dex" class="level-btn">Increase DEX</button>
-      <button id="level-up-con" class="level-btn">Increase CON</button>
-    </div>
-    <!-- Start section with name input and start button -->
-    <div id="start-section">
+    
+    <!-- Character Creation Section -->
+    <div id="character-creation">
+      <h2>Character Creation</h2>
       <label for="player-name">Enter Your Name:</label><br>
       <input type="text" id="player-name" placeholder="Hero"><br><br>
-      <button id="start-btn">Start Game</button>
+      <fieldset style="display: inline-block; text-align: left;">
+        <legend>Choose Your Class:</legend>
+        <label class="class-option">
+          <input type="radio" name="player-class" value="warrior" checked> Warrior
+        </label><br>
+        <label class="class-option">
+          <input type="radio" name="player-class" value="mage"> Mage
+        </label><br>
+        <label class="class-option">
+          <input type="radio" name="player-class" value="rogue"> Rogue
+        </label>
+      </fieldset><br><br>
+      <button id="start-adventure-btn" class="create-btn">Start Adventure</button>
+    </div>
+    
+    <!-- Gameplay Section -->
+    <div id="gameplay-section">
+      <div id="log"></div>
+      <!-- Combat action buttons -->
+      <div id="action-container">
+        <button id="attack-btn" class="action-btn">Attack</button>
+        <button id="flee-btn" class="action-btn">Flee</button>
+      </div>
+      <!-- After battle/town action buttons -->
+      <div id="after-battle-container">
+        <button id="continue-btn" class="action-btn">Continue Dungeon</button>
+        <button id="town-btn" class="action-btn">Go to Town</button>
+      </div>
+      <!-- Shop container (used when in town) -->
+      <div id="shop-container"></div>
+      <!-- Town action container: Shop or Delve into Dungeon -->
+      <div id="town-action-container">
+        <button id="shop-town-btn" class="town-btn">Shop</button>
+        <button id="delve-btn" class="town-btn">Delve into Dungeon</button>
+      </div>
+      <!-- Level-up container: Choose which stat to increase -->
+      <div id="level-up-container">
+        <p>Level Up! Choose a stat to increase:</p>
+        <button id="level-up-str" class="level-btn">Increase STR</button>
+        <button id="level-up-dex" class="level-btn">Increase DEX</button>
+        <button id="level-up-con" class="level-btn">Increase CON</button>
+      </div>
     </div>
   </div>
 
@@ -117,35 +146,25 @@
     function delay(ms) {
       return new Promise(resolve => setTimeout(resolve, ms));
     }
-
-    // Roll a die with a given number of sides (e.g., d20, d8)
     function rollDie(sides) {
       return Math.floor(Math.random() * sides) + 1;
     }
-
-    // Roll a d20 (used for attack rolls)
     function rollD20() {
       return rollDie(20);
     }
-
-    // Calculate ability modifier (D&D style: (stat - 10) / 2, rounded down)
     function abilityMod(stat) {
       return Math.floor((stat - 10) / 2);
     }
-
-    // Log messages to the #log div
     function log(message) {
       const logDiv = document.getElementById('log');
       logDiv.innerHTML += message + "\n";
       logDiv.scrollTop = logDiv.scrollHeight;
     }
-
-    // Clear the log area
     function clearLog() {
       document.getElementById('log').innerHTML = "";
     }
 
-    // Base Character class with a stat sheet
+    // Base Character class
     class Character {
       constructor(name, str, dex, con) {
         this.name = name;
@@ -155,65 +174,60 @@
         this.maxHp = 10 + abilityMod(this.con);
         this.hp = this.maxHp;
       }
-
-      // Armor Class based on Dexterity
       get ac() {
         return 10 + abilityMod(this.dex);
       }
-
-      // Basic attack roll: d20 + Strength modifier
       attackRoll() {
         return rollD20() + abilityMod(this.str);
       }
-
-      // Basic damage roll: 1d8 + Strength modifier (minimum 1)
       damageRoll() {
         return Math.max(1, rollDie(8) + abilityMod(this.str));
       }
-
-      // Full stat sheet (used outside combat)
       get statSheet() {
         return `${this.name} -- HP: ${this.hp}/${this.maxHp} | STR: ${this.str} (mod ${abilityMod(this.str)}) | DEX: ${this.dex} (mod ${abilityMod(this.dex)}) | CON: ${this.con} (mod ${abilityMod(this.con)}) | AC: ${this.ac}`;
       }
-
-      // Simple status (only HP)
       get status() {
         return `${this.name} HP: ${this.hp}/${this.maxHp}`;
       }
     }
 
-    // Player class with inventory, gold, equipment, and automatic level-up.
+    // Player class with class-specific starting stats
     class Player extends Character {
-      constructor(name = "Hero") {
-        super(name, 14, 12, 14);
+      constructor(name, playerClass) {
+        // Set base stats based on chosen class.
+        let baseStr, baseDex, baseCon;
+        switch(playerClass) {
+          case "warrior":
+            baseStr = 16; baseDex = 10; baseCon = 14;
+            break;
+          case "mage":
+            baseStr = 8; baseDex = 14; baseCon = 10;
+            break;
+          case "rogue":
+            baseStr = 10; baseDex = 16; baseCon = 12;
+            break;
+          default:
+            baseStr = 14; baseDex = 12; baseCon = 14;
+        }
+        super(name, baseStr, baseDex, baseCon);
         this.level = 1;
         this.gold = 50;
         this.inventory = [];
         this.equippedWeapon = null;
         this.equippedArmor = null;
       }
-
-      // Get effective Strength (includes weapon bonus)
       get effectiveStr() {
         return this.str + (this.equippedWeapon ? this.equippedWeapon.bonus : 0);
       }
-
-      // Override attackRoll to use effective Strength
       attackRoll() {
         return rollD20() + abilityMod(this.effectiveStr);
       }
-
-      // Override damageRoll to use effective Strength
       damageRoll() {
         return Math.max(1, rollDie(8) + abilityMod(this.effectiveStr));
       }
-
-      // Override AC to include equipped armor bonus
       get ac() {
         return 10 + abilityMod(this.dex) + (this.equippedArmor ? this.equippedArmor.bonus : 0);
       }
-
-      // Async levelUp method that prompts for a stat choice after each dungeon level.
       async levelUp() {
         this.level++;
         log(`\n*** ${this.name} reached Level ${this.level}! ***`);
@@ -248,96 +262,65 @@
       }
     }
 
-    // Helper: get a random integer between min and max (inclusive)
     function getRandom(min, max) {
       return Math.floor(Math.random() * (max - min + 1)) + min;
     }
 
-    // Get player's action during combat as a Promise.
+    // Promise wrappers for user actions
     function getPlayerAction() {
       return new Promise(resolve => {
         const actionContainer = document.getElementById('action-container');
         const attackBtn = document.getElementById('attack-btn');
         const fleeBtn = document.getElementById('flee-btn');
         actionContainer.style.display = 'block';
-
         function cleanup() {
           attackBtn.removeEventListener('click', onAttack);
           fleeBtn.removeEventListener('click', onFlee);
           actionContainer.style.display = 'none';
         }
-
-        function onAttack() {
-          cleanup();
-          resolve("attack");
-        }
-        function onFlee() {
-          cleanup();
-          resolve("flee");
-        }
-
+        function onAttack() { cleanup(); resolve("attack"); }
+        function onFlee() { cleanup(); resolve("flee"); }
         attackBtn.addEventListener('click', onAttack);
         fleeBtn.addEventListener('click', onFlee);
       });
     }
 
-    // Get player's after-battle decision as a Promise.
     function getAfterBattleAction() {
       return new Promise(resolve => {
         const afterBattleContainer = document.getElementById('after-battle-container');
         const continueBtn = document.getElementById('continue-btn');
         const townBtn = document.getElementById('town-btn');
         afterBattleContainer.style.display = 'block';
-
         function cleanup() {
           continueBtn.removeEventListener('click', onContinue);
           townBtn.removeEventListener('click', onTown);
           afterBattleContainer.style.display = 'none';
         }
-
-        function onContinue() {
-          cleanup();
-          resolve("continue");
-        }
-        function onTown() {
-          cleanup();
-          resolve("town");
-        }
-
+        function onContinue() { cleanup(); resolve("continue"); }
+        function onTown() { cleanup(); resolve("town"); }
         continueBtn.addEventListener('click', onContinue);
         townBtn.addEventListener('click', onTown);
       });
     }
 
-    // Get town action (Shop or Delve) as a Promise.
     function getTownAction() {
       return new Promise(resolve => {
         const townContainer = document.getElementById('town-action-container');
         const shopTownBtn = document.getElementById('shop-town-btn');
         const delveBtn = document.getElementById('delve-btn');
         townContainer.style.display = 'block';
-
         function cleanup() {
           shopTownBtn.removeEventListener('click', onShop);
           delveBtn.removeEventListener('click', onDelve);
           townContainer.style.display = 'none';
         }
-
-        function onShop() {
-          cleanup();
-          resolve("shop");
-        }
-        function onDelve() {
-          cleanup();
-          resolve("delve");
-        }
-
+        function onShop() { cleanup(); resolve("shop"); }
+        function onDelve() { cleanup(); resolve("delve"); }
         shopTownBtn.addEventListener('click', onShop);
         delveBtn.addEventListener('click', onDelve);
       });
     }
 
-    // Get level-up choice as a Promise.
     function getLevelUpChoice() {
       return new Promise(resolve => {
         const levelUpContainer = document.getElementById('level-up-container');
@@ -345,53 +328,37 @@
         const dexBtn = document.getElementById('level-up-dex');
         const conBtn = document.getElementById('level-up-con');
         levelUpContainer.style.display = 'block';
-
         function cleanup() {
           strBtn.removeEventListener('click', onStr);
           dexBtn.removeEventListener('click', onDex);
           conBtn.removeEventListener('click', onCon);
           levelUpContainer.style.display = 'none';
         }
-
-        function onStr() {
-          cleanup();
-          resolve("str");
-        }
-        function onDex() {
-          cleanup();
-          resolve("dex");
-        }
-        function onCon() {
-          cleanup();
-          resolve("con");
-        }
-
+        function onStr() { cleanup(); resolve("str"); }
+        function onDex() { cleanup(); resolve("dex"); }
+        function onCon() { cleanup(); resolve("con"); }
         strBtn.addEventListener('click', onStr);
         dexBtn.addEventListener('click', onDex);
         conBtn.addEventListener('click', onCon);
       });
     }
 
-    // Shop functionality: Generates shop items with quality scaling based on dungeon level.
+    // Shop functionality: Items scale based on dungeon level.
     async function shop(player, dungeonLevel) {
       log("\n--- Welcome to the Shop ---");
       await delay(500);
       log(`You have ${player.gold} gold.`);
-      
       const baseWeaponBonus = Math.min(2 + Math.floor(dungeonLevel / 2), 10);
       const baseArmorBonus = Math.min(2 + Math.floor(dungeonLevel / 2), 10);
-      
       const shopItems = [
         { name: "Rusty Sword", type: "weapon", bonus: baseWeaponBonus, price: 20 + baseWeaponBonus * 5, description: `A worn sword that adds +${baseWeaponBonus} to STR.` },
         { name: "Iron Sword", type: "weapon", bonus: baseWeaponBonus + 2, price: 40 + (baseWeaponBonus + 2) * 5, description: `A sturdy sword that adds +${baseWeaponBonus + 2} to STR.` },
         { name: "Leather Armor", type: "armor", bonus: baseArmorBonus, price: 15 + baseArmorBonus * 5, description: `Basic armor that adds +${baseArmorBonus} to AC.` },
         { name: "Chainmail", type: "armor", bonus: baseArmorBonus + 2, price: 35 + (baseArmorBonus + 2) * 5, description: `Chainmail armor that adds +${baseArmorBonus + 2} to AC.` }
       ];
-      
       const shopContainer = document.getElementById('shop-container');
       shopContainer.innerHTML = "";
       shopContainer.style.display = 'block';
-
       shopItems.forEach((item) => {
         const btn = document.createElement('button');
         btn.className = "shop-btn";
@@ -416,7 +383,6 @@
         shopContainer.appendChild(btn);
         shopContainer.appendChild(document.createElement('br'));
       });
-      
       const exitBtn = document.createElement('button');
       exitBtn.className = "shop-btn";
       exitBtn.innerText = "Exit Shop";
@@ -427,7 +393,7 @@
       await delay(1000);
     }
 
-    // Chest room event: The player finds a treasure chest and gains some gold.
+    // Chest room event: Gain gold from a treasure chest.
     async function chestRoom(player, dungeonLevel) {
       const goldReward = getRandom(10, 30) * dungeonLevel;
       log(`\nYou discover a treasure chest! You open it and find ${goldReward} gold.`);
@@ -436,7 +402,7 @@
       await delay(1000);
     }
 
-    // Town: Fully heal the player, then let them choose an action.
+    // Town: Automatically heals the player and then offers shop/delve options.
     async function town(player, dungeonLevel) {
       log("\n--- You enter town ---");
       await delay(1000);
@@ -445,7 +411,6 @@
       player.hp = player.maxHp;
       log(`\n${player.name}'s HP is fully restored to ${player.hp}!\n`);
       await delay(500);
-      
       let townChoice = await getTownAction();
       if (townChoice === "shop") {
         await shop(player, dungeonLevel);
@@ -456,7 +421,7 @@
       log("--- You leave town and return to the dungeon ---");
     }
 
-    // Combat function using d20 attack rolls with positive and negative crits.
+    // Combat function using d20 rolls with crits.
     async function combat(player, monster) {
       log(`\nA wild ${monster.name} (Level ${monster.level}) appears!`);
       while (player.hp > 0 && monster.hp > 0) {
@@ -465,7 +430,6 @@
         log(`\nChoose your action:`);
         let action = await getPlayerAction();
         if (action === "attack") {
-          // Player's turn with crits.
           let natRoll = rollDie(20);
           let totalRoll = natRoll + abilityMod(player.effectiveStr);
           log(`${player.name} rolls a d20: natural roll = ${natRoll}, total attack roll = ${totalRoll} vs. AC ${monster.ac}`);
@@ -506,7 +470,6 @@
           }
         }
         await delay(1000);
-        // Monster's turn with player-friendly output.
         if (monster.hp > 0) {
           log(`${monster.name} attacks!`);
           let natRollM = rollDie(20);
@@ -542,7 +505,7 @@
       }
     }
 
-    // Generate a dungeon level where each room is either a monster room or, with a 10% chance, a chest room.
+    // Generate a dungeon level with a mix of monster and chest rooms.
     function generateDungeon(level) {
       const minRooms = 3 + level;
       const maxRooms = 6 + level;
@@ -561,13 +524,20 @@
 
     // Main game loop.
     async function gameLoop() {
-      // Get the player's name from the input. If blank, default to "Hero".
       let playerName = document.getElementById("player-name").value.trim() || "Hero";
-      let player = new Player(playerName);
-      let dungeonLevel = 1;
-      log(`Welcome, ${player.name}, to the Dungeon of Fate!`);
+      let classOptions = document.getElementsByName("player-class");
+      let chosenClass = "warrior"; // default
+      for (let opt of classOptions) {
+        if (opt.checked) {
+          chosenClass = opt.value;
+          break;
+        }
+      }
+      let player = new Player(playerName, chosenClass);
+      log(`Welcome, ${player.name} the ${chosenClass.toUpperCase()}, to the Dungeon of Fate!`);
       log("Prepare for battle...\n");
       await delay(1000);
+      let dungeonLevel = 1;
       while (player.hp > 0) {
         log(`\n========== Dungeon Level ${dungeonLevel} ==========\n`);
         const rooms = generateDungeon(dungeonLevel);
@@ -598,15 +568,15 @@
         }
       }
       log("\nGame Over! Thanks for playing.");
-      document.getElementById("start-btn").disabled = false;
+      document.getElementById("start-adventure-btn").disabled = false;
     }
 
-    // Start game when the button is clicked.
-    document.getElementById("start-btn").addEventListener("click", () => {
+    // Start game when the Start Adventure button is clicked.
+    document.getElementById("start-adventure-btn").addEventListener("click", () => {
       clearLog();
-      document.getElementById("start-btn").disabled = true;
-      // Hide the start section after starting the game.
-      document.getElementById("start-section").style.display = "none";
+      // Hide character creation section and show gameplay section.
+      document.getElementById("character-creation").style.display = "none";
+      document.getElementById("gameplay-section").style.display = "block";
       gameLoop();
     });
   </script>
